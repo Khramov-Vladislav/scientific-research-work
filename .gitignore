@@ -1,0 +1,24 @@
+# Системные файлы macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Иконки и файлы настроек папок
+Icon?
+._*
+
+# Файлы эскизов и кэша изображений
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Локальные каталоги для сетевых папок и внешних дисков
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+/docs
