@@ -21,4 +21,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-/docs
+docs/
+build/
