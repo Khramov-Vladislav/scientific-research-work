@@ -1,0 +1,39 @@
+\input{preamble}
+
+\begin{document}
+
+% Титульный лист
+\input{titlepage}
+
+% Реферат (по ГОСТ 7.32 — до содержания, номер страницы не печатается)
+\input{chapters/00_report}
+\newpage
+
+% Содержание
+\tableofcontents
+\newpage
+
+% Термины, сокращения, введение
+\input{chapters/01_termsAndDefinitions}
+\input{chapters/02_abbreviationsAndDesignations}
+\input{chapters/03_introduction}
+
+% Основная часть
+\input{chapters/04_chapter1}
+\input{chapters/05_chapter2}
+\input{chapters/06_chapter3}
+
+% Заключение
+\input{chapters/07_conclusion}
+
+% Список литературы
+\newpage
+\section*{Список литературы}
+\addcontentsline{toc}{section}{Список литературы}
+\printbibliography[heading=none]
+
+% Приложения
+\newpage
+\input{appendices/A_code}
+
+\end{document}
