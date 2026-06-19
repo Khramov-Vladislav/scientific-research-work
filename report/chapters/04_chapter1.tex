@@ -1,3 +1,4 @@
+\newpage
 \section{ОРГАНИЗАЦИЯ ВИРТУАЛЬНОЙ ВЫЧИСЛИТЕЛЬНОЙ СРЕДЫ}
 
 \subsection{Выбор и развёртывание среды виртуализации}
@@ -35,7 +36,7 @@ node}), на котором размещаются диспетчер SLURM и �
 \hline
 Узел & Роль & ЦП (ядра) & ОЗУ (МБ) \\
 \hline
-control & управляющий узел, slurmctld & 2 & 2048 \\
+master & управляющий узел, slurmctld & 2 & 2048 \\
 node1 & вычислительный узел, slurmd & 1 & 1024 \\
 node2 & вычислительный узел, slurmd & 1 & 1024 \\
 node3 & вычислительный узел, slurmd & 1 & 1024 \\
@@ -49,39 +50,16 @@ node4 & вычислительный узел, slurmd & 1 & 1024 \\
 SLURM; учётная запись \texttt{root} применялась исключительно для
 установки и настройки системного программного обеспечения.
 
-\subsection{Решение проблемы совместимости с архитектурой ARM}
-
-В процессе установки гостевой операционной системы Fedora Server на
-виртуальную машину с эмулируемым контроллером накопителей по
-умолчанию (SATA/AHCI) была выявлена проблема несовместимости: на
-хост-системе с архитектурой ARM (Apple M2) образ установки не
-определял подключённый виртуальный диск, что приводило к невозможности
-завершить установку.
-
-Для устранения данной проблемы тип контроллера накопителя виртуальной
-машины был изменён с SATA на \textbf{VirtIO SCSI} — паравиртуализированный
-драйвер, обеспечивающий корректное взаимодействие гостевой системы с
-диском при эмуляции архитектуры, отличной от архитектуры хост-машины.
-После применения данного решения установка операционной системы
-была успешно завершена на всех пяти виртуальных машинах.
-
-% TODO: вставить скриншот настроек контроллера VirtualBox (Storage -> Controller: VirtIO SCSI)
-% \begin{figure}[H]
-% \centering
-% \includegraphics[width=0.7\textwidth]{images/virtio_scsi.png}
-% \caption{Настройка контроллера VirtIO SCSI в VirtualBox}
-% \end{figure}
-
 \subsection{Настройка виртуальной сети и разрешения имён}
 
-Для обеспечения взаимодействия между узлами кластера был настроен
-отдельный виртуальный сетевой адаптер в режиме
-% TODO: уточнить режим сети — Host-only Adapter / Internal Network / NAT Network
-\texttt{<режим сети VirtualBox>}, обеспечивающий изолированную
-локальную сеть для всех пяти виртуальных машин. Каждому узлу был
-присвоен статический IP-адрес в соответствии с таблицей~\ref{tab:ip}.
+Для обеспечения межведомственного взаимодействия внутри кластера был настроен
+отдельный виртуальный сетевой адаптер в режиме внутренней сети (\texttt{Internal Network}),
+обеспечивающий изолированную локальную подсеть \texttt{192.168.1.0/24} для всех пяти 
+виртуальных машин. Дополнительно для связи хост-машины (macOS) с управляющим узлом 
+был задействован интерфейс \texttt{NAT} с настройкой проброса портов (порт 2222 хоста 
+на порт 22 гостевой ОС). Каждому узлу внутри кластера был присвоен статический IP-адрес 
+в соответствии с таблицей~\ref{tab:ip}.
 
-% TODO: подставить реальную сетевую маску/диапазон и адреса узлов
 \begin{table}[H]
 \caption{Адресация узлов виртуального кластера}
 \label{tab:ip}
@@ -90,26 +68,28 @@ SLURM; учётная запись \texttt{root} применялась искл
 \hline
 Имя узла & IP-адрес \\
 \hline
-control & 192.168.56.10 \\
-node1 & 192.168.56.11 \\
-node2 & 192.168.56.12 \\
-node3 & 192.168.56.13 \\
-node4 & 192.168.56.14 \\
+master & 192.168.1.10 \\
+node1 & 192.168.1.11 \\
+node2 & 192.168.1.12 \\
+node3 & 192.168.1.13 \\
+node4 & 192.168.1.14 \\
 \hline
 \end{tabular}
 \end{table}
 
 Разрешение имён узлов обеспечено посредством редактирования файла
 \texttt{/etc/hosts} на каждой виртуальной машине, что позволило
-обращаться к узлам по символьным именам (\texttt{control},
-\texttt{node1}--\texttt{node4}) без использования отдельного DNS-сервера.
+обращаться к узлам по их символьным именам (\texttt{master},
+\texttt{node1}--\texttt{node4}) без использования внешнего DNS-сервера, обеспечив 
+корректную среду для работы демонов планировщика SLURM.
 
-\begin{lstlisting}[caption={Фрагмент файла /etc/hosts}]
-192.168.56.10   control
-192.168.56.11   node1
-192.168.56.12   node2
-192.168.56.13   node3
-192.168.56.14   node4
+\begin{lstlisting}[caption={Содержимое файла /etc/hosts}]
+127.0.0.1   localhost
+192.168.1.10 master
+192.168.1.11 node1
+192.168.1.12 node2
+192.168.1.13 node3
+192.168.1.14 node4
 \end{lstlisting}
 
 \subsection{Настройка SSH с авторизацией по ключам}
@@ -143,16 +123,16 @@ ssh-copy-id user@node4
 (пользователь \texttt{munge}). Служба \texttt{munge} была запущена и
 добавлена в автозагрузку на всех пяти узлах кластера.
 
-\begin{lstlisting}[caption={Развёртывание ключа munge}]
-# На управляющем узле
-sudo /usr/sbin/create-munge-key
-scp /etc/munge/munge.key user@node1:/tmp/
-# На каждом вычислительном узле
-sudo mv /tmp/munge.key /etc/munge/munge.key
-sudo chown munge: /etc/munge/munge.key
-sudo chmod 400 /etc/munge/munge.key
-sudo systemctl enable --now munge
-\end{lstlisting}
+% \begin{lstlisting}[caption={Развёртывание ключа munge}]
+% # На управляющем узле
+% sudo /usr/sbin/create-munge-key
+% scp /etc/munge/munge.key user@node1:/tmp/
+% # На каждом вычислительном узле
+% sudo mv /tmp/munge.key /etc/munge/munge.key
+% sudo chown munge: /etc/munge/munge.key
+% sudo chmod 400 /etc/munge/munge.key
+% sudo systemctl enable --now munge
+% \end{lstlisting}
 
 \subsection{Установка и настройка SLURM}
 
@@ -166,9 +146,23 @@ sudo systemctl enable --now munge
 включающего все четыре вычислительных узла.
 
 \begin{lstlisting}[caption={Фрагмент файла slurm.conf}]
-ClusterName=virtual_cluster
-SlurmctldHost=control
-NodeName=node[1-4] CPUs=1 RealMemory=1024 State=UNKNOWN
+ClusterName=mac_cluster
+SlurmctldHost=master
+SlurmUser=slurm
+SlurmdUser=root
+AuthType=auth/munge
+CryptoType=crypto/munge
+SelectType=select/cons_tres
+SelectTypeParameters=CR_Core
+SlurmdParameters=config_overrides
+
+# Логи
+SlurmctldLogFile=/var/log/slurm/slurmctld.log
+SlurmdLogFile=/var/log/slurm/slurmd.log
+StateSaveLocation=/var/spool/slurmctld
+
+# Описание машин
+NodeName=node[1-4] CPUs=1 State=UNKNOWN
 PartitionName=debug Nodes=node[1-4] Default=YES MaxTime=INFINITE State=UP
 \end{lstlisting}
 
@@ -188,10 +182,4 @@ PartitionName=debug Nodes=node[1-4] Default=YES MaxTime=INFINITE State=UP
 После полной настройки и проверки работоспособности первого
 вычислительного узла (установка ОС, сеть, SSH, munge, slurmd) данная
 виртуальная машина использовалась как базовый образ для клонирования
-оставшихся трёх вычислительных узлов средствами VirtualBox
-(\textit{Clone} с режимом \textit{Full Clone}). После клонирования на
-каждой копии выполнялись индивидуализация сетевых параметров (смена
-IP-адреса и имени узла) и перегенерация машинного идентификатора
-(\texttt{/etc/machine-id}) во избежание конфликтов в локальной сети.
-
-
+оставшихся четырех вычислительных узлов средствами VirtualBox.
