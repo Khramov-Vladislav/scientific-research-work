@@ -36,3 +36,5 @@ esac
 # ping -c 2 node1
 # ssh node1 "hostname; whoami" Проверка SSH с авторизацией по ключам
 # id
+# scontrol show nodes Просмотр настроек вычислительных узлов
+# scontrol show partitions Просмотр настроек разделов (Partitions / Очередей)

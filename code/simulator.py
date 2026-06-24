@@ -10,45 +10,52 @@ from datetime import datetime
 UID = 50430
 JOB_NAME = "run_bwa.sh"
 
-# --- МАСШТАБИРОВАННЫЕ ПАРАМЕТРЫ ИЗ ДАТАСЕТА ---
-T_MIN = 1       # Масштабированный минимум (26 сек / 1000)
-T_MAX = 43      # Масштабированный максимум (43209 сек / 1000)
+# --- МАСШТАБИРОВАННЫЕ ПАРАМЕТРЫ ИЗ ДАТАСЕТА (ОБНОВИ ИХ ПОСЛЕ ЗАПУСКА СКРИПТА 1) ---
+T_MIN = 1       
+T_MAX = 43      
 
-# Параметры распределения ошибки
-MU = 3.8621
-SIGMA = 0.8489
+# Вставь сюда новые коэффициенты, которые выдаст первая программа:
+MU = 3.5214       
+SIGMA = 0.7241  
+TIMEOUT_RATE = 0.05  # СЮДА ДОЛЮ ТАЙМАУТОВ (например, если 5%, то 0.05)
 
 def generate_job():
-    # 1. Фактическое время по нормальному распределению (с отсечением границ)
+    # 1. Фактическое время по нормальному распределению
     while True:
         mean_t = (T_MIN + T_MAX) / 2
-        std_t = (T_MAX - T_MIN) / 4  # 95% значений ложится в диапазон
+        std_t = (T_MAX - T_MIN) / 4
         t_fact = random.normalvariate(mean_t, std_t)
         if T_MIN <= t_fact <= T_MAX:
             break
 
-    t_fact = max(1, round(t_fact)) # Гарантируем хотя бы 1 секунду сна
+    t_fact = max(2, round(t_fact)) # Минимум 2 секунды
 
-    # 2. Пользовательская оценка времени через Логнормальное распределение (Tau)
-    tau = random.lognormvariate(MU, SIGMA)
-    t_req = round(t_fact * tau)
+    # Определяем, будет ли эта задача таймаутом на основе статистики
+    is_timeout = random.random() < TIMEOUT_RATE
 
-    # Защитный лимит: SLURM убьет задачу, если лимит меньше факта
-    if t_req <= t_fact:
-        t_req = t_fact + random.randint(5, 15)
+    if is_timeout:
+        # Ситуация таймаута: пользователь запросил МЕНЬШЕ, чем идет задача
+        # Лимит времени ставится меньше, чем t_fact
+        t_req = random.randint(1, t_fact - 1)
+    else:
+        # Обычная корректная задача (Логнормальное распределение)
+        tau = random.lognormvariate(MU, SIGMA)
+        t_req = round(t_fact * tau)
+        
+        # Гарантируем, что в нормальном режиме лимит все-таки больше факта
+        if t_req <= t_fact:
+            t_req = t_fact + random.randint(5, 15)
 
-    # 3. Выбор количества узлов {1, 2, 3, 4} (Равномерное распределение)
+    # 3. Выбор количества узлов (Равномерное распределение)
     nodes = random.choice([1, 2, 3, 4])
 
     return t_fact, t_req, nodes
 
 def submit_to_slurm(job_id, t_fact, t_req, nodes):
-    # Переводим t_req (секунды) в формат SLURM Timelimit (минуты:секунды)
-    # Перевод в минуты с округлением вверх (минимум 1 минута для стабильности диспетчера)
+    # Переводим t_req в формат минут для SLURM
     minutes = max(1, math.ceil(t_req / 60))
     timelimit_str = f"{minutes}:00"
 
-    # Формируем скрипт пакетной задачи
     sbatch_content = f"""#!/bin/bash
 #SBATCH --job-name={JOB_NAME}
 #SBATCH --nodes={nodes}
@@ -62,11 +69,10 @@ sleep {t_fact}
     with open(script_name, "w") as f:
         f.write(sbatch_content)
 
-    # Отправляем задачу в очередь SLURM
     try:
         result = subprocess.run(["sbatch", script_name], capture_output=True, text=True, check=True)
         slurm_job_id = result.stdout.strip().split()[-1]
-        print(f"Заявка {job_id} отправлена. ID: {slurm_job_id} | Узлов: {nodes} | План (Лимит): {t_req}с | Факт (Сон): {t_fact}с")
+        print(f"Заявка {job_id} отправлена. ID: {slurm_job_id} | Лимит: {t_req}с | Факт: {t_fact}с | Сбой по лимиту: {t_req < t_fact}")
         return slurm_job_id
     except Exception as e:
         print(f"Ошибка отправки в SLURM: {e}")
@@ -96,15 +102,12 @@ def main():
         if not file_exists:
             writer.writerow(["Timestamp", "SimID", "SlurmJobID", "Nodes", "PlannedTime_Sec", "ActualTime_Sec", "Tau"])
 
-        print(f"--- Запуск генерации {num_jobs} заявок ---")
+        print(f"--- Запуск генерации {num_jobs} заявок с учетом таймаутов ---")
         for i in range(1, num_jobs + 1):
             t_fact, t_req, nodes = generate_job()
             tau = round(t_req / t_fact, 4)
 
-            # Ставим задачу в реальную очередь кластера
             slurm_id = submit_to_slurm(i, t_fact, t_req, nodes)
-
-            # Логируем метаданные в файл "План-Факт"
             writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), i, slurm_id, nodes, t_req, t_fact, tau])
 
     print(f"--- Имитация завершена. Статистика сохранена в {log_file} ---")
