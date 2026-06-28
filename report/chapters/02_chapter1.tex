@@ -1,8 +1,7 @@
-\newpage
 \subsection{Организация виртуальной вычислительной среды}
 \subsection*{Выбор и развёртывание среды виртуализации}
 В качестве среды виртуализации в данной работе использовался
-программный продукт Oracle VM VirtualBox, выбор которого обусловлен
+программный продукт Oracle VM VirtualBox~\cite{oracle2024vbox}, выбор которого обусловлен
 его свободным распространением, поддержкой широкого спектра
 гостевых операционных систем и наличием официальной сборки для
 архитектуры ARM64, что является необходимым условием для
@@ -10,7 +9,7 @@
 Silicon (MacBook Air, чип Apple M2, 8 ГБ ОЗУ).
 
 В соответствии с вариантом задания в качестве гостевой операционной
-системы был выбран дистрибутив Fedora Server в редакции для
+системы был выбран дистрибутив Fedora Server~\cite{fedora2024docs} в редакции для
 архитектуры aarch64. Установка и функционирование системы
 осуществлялись в режиме интерфейса командной строки, без
 графической оболочки.
@@ -77,7 +76,7 @@ node4  & 192.168.1.14 \\
 позволяет обращаться к узлам по символьным именам
 (\texttt{master}, \texttt{node1}--\texttt{node4}) без развёртывания
 внешнего DNS-сервера и обеспечивает корректную работу демонов
-планировщика SLURM. Итоговое содержимое файла приведено в
+планировщика SLURM~\cite{schedmd2024slurm}. Итоговое содержимое файла приведено в
 листинге~1.
 
 \begin{lstlisting}[caption={Содержимое файла /etc/hosts}]
@@ -157,6 +156,25 @@ PartitionName=debug Nodes=node[1-4] Default=YES MaxTime=INFINITE State=UP
 vlad@master:~$ sinfo
 PARTITION AVAIL  TIMELIMIT  NODES  STATE NODELIST
 debug*       up   infinite      4   idle node[1-4]
+\end{lstlisting}
+
+\begin{lstlisting}[caption={Фрагмент вывода команды \texttt{scontrol show nodes}}]
+vlad@master:~$ scontrol show nodes
+NodeName=node1 Arch=aarch64 CoresPerSocket=1 
+   CPUAlloc=0 CPUEfctv=1 CPUTot=1 CPULoad=0.18
+   AvailableFeatures=(null)
+   ActiveFeatures=(null)
+   Gres=(null)
+   NodeAddr=node1 NodeHostName=node1 Version=24.05.2
+   OS=Linux 6.19.10-300.fc44.aarch64 #1 SMP PREEMPT_DYNAMIC Wed Mar 25 17:45:07 UTC 2026 
+   RealMemory=1 AllocMem=0 FreeMem=463 Sockets=1 Boards=1
+   State=IDLE ThreadsPerCore=1 TmpDisk=0 Weight=1 Owner=N/A MCS_label=N/A
+   Partitions=debug 
+   BootTime=2026-06-25T06:44:34 SlurmdStartTime=2026-06-25T06:44:45
+   LastBusyTime=2026-06-25T06:44:44 ResumeAfterTime=None
+   CfgTRES=cpu=1,mem=1M,billing=1
+   AllocTRES=
+   CurrentWatts=0 AveWatts=0
 \end{lstlisting}
 
 \subsection*{Клонирование вычислительных узлов}
