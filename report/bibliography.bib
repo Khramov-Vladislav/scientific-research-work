@@ -45,7 +45,7 @@
 
 % --- 5. Исследование неточности пользовательских оценок времени в HPC ---
 @inproceedings{kappes2018userestimates,
-  author    = {Kappes, Tomas and Hanzálek, Zdeněk},
+  author    = {Kappes, Tomas and Hanz{\'a}lek, Zden{\v{e}}k},
   title     = {User Estimates Inaccuracy Study in {HPC} Scheduler},
   booktitle = {Parallel Processing and Applied Mathematics},
   series    = {Lecture Notes in Computer Science},
@@ -59,8 +59,10 @@
 
 % --- 6. Логнормальное распределение в анализе отказов HPC-задач ---
 @article{di2014jobfailures,
-  author  = {Di, Sheng and Bouguerra, Mohamed-Slim and Bautista-Gomez, Leonardo and Cappello, Franck},
-  title   = {Job Failures in High Performance Computing Systems: A Large-scale Empirical Study},
+  author  = {Di, Sheng and Bouguerra, Mohamed-Slim and
+             Bautista-Gomez, Leonardo and Cappello, Franck},
+  title   = {Job Failures in High Performance Computing Systems:
+             A Large-scale Empirical Study},
   journal = {Computers \& Mathematics with Applications},
   volume  = {68},
   number  = {10},
@@ -72,7 +74,8 @@
 % --- 7. Предсказание времени выполнения HPC-задач ---
 @techreport{sherrill2023hpcruntime,
   author      = {Sherrill, Caleb and Planas, Vanessa and Golden, Jonathan},
-  title       = {Mastering {HPC} Runtime Prediction: From Observing Patterns to a Methodological Approach},
+  title       = {Mastering {HPC} Runtime Prediction: From Observing
+                 Patterns to a Methodological Approach},
   institution = {National Renewable Energy Laboratory},
   number      = {NREL/TP-2C00-86526},
   address     = {Golden, CO},
@@ -103,8 +106,12 @@
 
 % --- 10. ГОСТ на оформление отчётов ---
 @misc{gost732,
-  author       = {{Федеральное агентство по техническому регулированию и метрологии}},
-  title        = {{ГОСТ~7.32--2017}. Система стандартов по информации, библиотечному и издательскому делу. Отчёт о научно-исследовательской работе. Структура и правила оформления},
+  author       = {{Федеральное агентство по техническому регулированию
+                  и метрологии}},
+  title        = {{ГОСТ~7.32--2017}. Система стандартов по информации,
+                  библиотечному и издательскому делу. Отчёт о
+                  научно-исследовательской работе. Структура и правила
+                  оформления},
   howpublished = {Стандартинформ},
   address      = {Москва},
   year         = {2017},
@@ -112,59 +119,68 @@
 }
 
 % ============================================================
-% НОВЫЕ ИСТОЧНИКИ (добавлено 5 позиций до 15)
+% НОВЫЕ ИСТОЧНИКИ — все реальные, проверены по DOI и ISBN
 % ============================================================
 
-% --- 11. Имитационное моделирование и оптимизация конфигурации планировщика ---
-% НОВЫЙ ИСТОЧНИК
-@techreport{anonymous2025simulation,
-  author      = {Anonymous},
-  title       = {Simulation-Based Optimization of {HPC} Job Scheduler Configuration},
-  institution = {HSE University},
-  year        = {2025},
-  note        = {Препринт}
+% --- 11. Моделирование нагрузки на вычислительные системы (монография) ---
+% Feitelson D.G. Workload Modeling for Computer Systems Performance Evaluation.
+% Cambridge University Press, 2015. 564 p. ISBN 978-1-107-07823-9
+@book{feitelson2015workload,
+  author    = {Feitelson, Dror G.},
+  title     = {Workload Modeling for Computer Systems Performance Evaluation},
+  publisher = {Cambridge University Press},
+  address   = {Cambridge},
+  year      = {2015},
+  pages     = {564},
+  isbn      = {978-1-107-07823-9}
 }
 
-% --- 12. Моделирование пользовательских оценок времени выполнения задач ---
-% НОВЫЙ ИСТОЧНИК
-@phdthesis{tsafrir2006modeling,
-  author = {Tsafrir, Dan},
-  title  = {Modeling User Runtime Estimates},
-  school = {The Hebrew University of Jerusalem},
-  year   = {2006}
-}
-
-% --- 13. Практическое руководство по работе с планировщиком и постановке задач ---
-% НОВЫЙ ИСТОЧНИК
-@misc{cineca2025scheduler,
-  author       = {{CINECA}},
-  title        = {Scheduler and Job Submission},
-  howpublished = {SCAI User Support Documentation},
-  year         = {2025},
-  url          = {https://www.cineca.it/en/services/hpc/user-support}
-}
-
-% --- 14. Комплексный обзор HPC-планировщиков и сравнение эффективности ---
-% НОВЫЙ ИСТОЧНИК
-@article{georgiou2025hpc,
-  author  = {Georgiou, Konstantinos and Groh, Florian and Jimenez, Daniel},
-  title   = {A Comprehensive Survey on {HPC} Job Scheduling Algorithms and Resource Management},
+% --- 12. Backfilling с системными предсказаниями времени выполнения ---
+% Tsafrir D., Etsion Y., Feitelson D.G.
+% IEEE Trans. Parallel & Distributed Syst., 18(6):789--803, 2007.
+% DOI: 10.1109/TPDS.2007.70606
+@article{tsafrir2007backfilling,
+  author  = {Tsafrir, Dan and Etsion, Yoav and Feitelson, Dror G.},
+  title   = {Backfilling Using System-Generated Predictions Rather Than
+             User Runtime Estimates},
   journal = {IEEE Transactions on Parallel and Distributed Systems},
-  volume  = {36},
-  number  = {1},
-  pages   = {124--141},
-  year    = {2025},
-  doi     = {10.1109/TPDS.2024.3483199}
+  volume  = {18},
+  number  = {6},
+  pages   = {789--803},
+  year    = {2007},
+  doi     = {10.1109/TPDS.2007.70606}
 }
 
-% --- 15. Эмпирический анализ статистических закономерностей в HPC-нагрузках ---
-% НОВЫЙ ИСТОЧНИК
-@article{zhang2024empirical,
-  author  = {Zhang, Wei and Liu, Hong and Chen, Yang},
-  title   = {Empirical Analysis of Statistical Patterns in {HPC} Workloads: A 10-Year Study},
-  journal = {Journal of Parallel and Distributed Computing},
-  volume  = {189},
-  pages   = {104895},
-  year    = {2024},
-  doi     = {10.1016/j.jpdc.2024.104895}
+% --- 13. Использование и предсказуемость при планировании с backfilling ---
+% Mu'alem A.W., Feitelson D.G.
+% IEEE Trans. Parallel & Distributed Syst., 12(6):529--543, 2001.
+% DOI: 10.1109/71.932708
+@article{mualem2001utilization,
+  author  = {Mu'alem, Ahuva W. and Feitelson, Dror G.},
+  title   = {Utilization, Predictability, Workloads, and User Runtime
+             Estimates in Scheduling the {IBM SP2} with Backfilling},
+  journal = {IEEE Transactions on Parallel and Distributed Systems},
+  volume  = {12},
+  number  = {6},
+  pages   = {529--543},
+  year    = {2001},
+  doi     = {10.1109/71.932708}
+}
+
+% --- 14. Справочная документация SLURM: команда sacct ---
+@misc{schedmd2024sacct,
+  author       = {{SchedMD LLC}},
+  title        = {{Slurm Workload Manager} --- \texttt{sacct} Command Reference},
+  howpublished = {\url{https://slurm.schedmd.com/sacct.html}},
+  year         = {2024},
+  note         = {Дата обращения: 25.06.2026}
+}
+
+% --- 15. Справочная документация SLURM: команда sbatch ---
+@misc{schedmd2024sbatch,
+  author       = {{SchedMD LLC}},
+  title        = {{Slurm Workload Manager} --- \texttt{sbatch} Command Reference},
+  howpublished = {\url{https://slurm.schedmd.com/sbatch.html}},
+  year         = {2024},
+  note         = {Дата обращения: 25.06.2026}
 }
