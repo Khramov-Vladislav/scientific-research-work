@@ -7,55 +7,65 @@ import shutil
 import subprocess
 from datetime import datetime
 
-# --- НАСТРОЙКИ ---
 UID = 50430
 JOB_NAME = "run_bwa.sh"
 
-# --- МАСШТАБИРОВАННЫЕ ПАРАМЕТРЫ ИЗ ДАТАСЕТА ---
-T_MIN = 1
-T_MAX = 43
+K_SCALE = 30
+T_MIN = 1    
+T_MAX = 360  
 
-MU = 3.8621
-SIGMA = 0.8489
+MU    = 3.9411
+SIGMA = 0.8260
+
 TIMEOUT_RATE = 0.05
 
+HOME_DIR  = "/home/vlad"
+JOBS_DIR  = f"{HOME_DIR}/saved_jobs"
+LOG_FILE  = f"{HOME_DIR}/simulation_stats.csv"
+
+
 def generate_job():
-    # 1. Фактическое время по усеченному нормальному распределению
+
+    mean_t = (T_MIN + T_MAX) / 2
+    std_t  = (T_MAX - T_MIN) / 4
     while True:
-        mean_t = (T_MIN + T_MAX) / 2
-        std_t = (T_MAX - T_MIN) / 4
         t_fact = random.normalvariate(mean_t, std_t)
         if T_MIN <= t_fact <= T_MAX:
             break
+    t_fact = max(2, round(t_fact))
 
-    t_fact = max(2, round(t_fact))  
-
-    # Определяем, будет ли эта задача таймаутом на основе исторической вероятности
     is_timeout = random.random() < TIMEOUT_RATE
 
     if is_timeout:
-        # Режим таймаута: лимит времени строго меньше фактического времени работы
-        t_req = random.randint(1, t_fact - 1)
-    else:
-        # Нормальный режим: логнормальная ошибка перестраховки пользователя
-        tau = random.lognormvariate(MU, SIGMA)
-        t_req = round(t_fact * tau)
+        if t_fact > 60:
+            max_minutes = (t_fact - 1) // 60  
+            if max_minutes >= 1:
+                limit_minutes = random.randint(1, max_minutes)
+            else:
+                limit_minutes = 1
+            t_req = limit_minutes * 60  
+        else:
+            is_timeout = False
 
-        # Гарантируем, что в нормальном режиме лимит всё-таки больше факта
+    if not is_timeout:
+        tau   = random.lognormvariate(MU, SIGMA)
+        t_req = round(t_fact * tau)
         if t_req <= t_fact:
             t_req = t_fact + random.randint(5, 15)
 
-    # 3. Выбор количества узлов (Равномерное распределение)
     nodes = random.choice([1, 2, 3, 4])
 
-    return t_fact, t_req, nodes
+    return t_fact, t_req, nodes, is_timeout
+
+
+def format_timelimit(t_req_sec):
+    mm = t_req_sec // 60
+    ss = t_req_sec % 60
+    return f"{mm:02d}:{ss:02d}"
+
 
 def submit_to_slurm(job_id, t_fact, t_req, nodes):
-    # Форматируем лимит времени в посекундный формат ММ:СС
-    # Это заставит SLURM обрубать задачи по таймауту с точностью до секунды
-    mm = t_req // 60
-    ss = t_req % 60
-    timelimit_str = f"{mm:02d}:{ss:02d}"
+    timelimit_str = format_timelimit(t_req)
 
     sbatch_content = f"""#!/bin/bash
 #SBATCH --job-name={JOB_NAME}
@@ -64,35 +74,51 @@ def submit_to_slurm(job_id, t_fact, t_req, nodes):
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
+# Замер времени с точностью до миллисекунды для анализа накладных расходов SLURM
+_START_MS=$(date +%s%3N)
 sleep {t_fact}
+_END_MS=$(date +%s%3N)
+_ELAPSED_MS=$((_END_MS - _START_MS))
+
+# Запись в лог накладных расходов: JobID, запрошенный sleep (с), реальное время (мс)
+echo "${{SLURM_JOB_ID}},{t_fact},${{_ELAPSED_MS}}" >> {HOME_DIR}/overhead_log.csv
 """
-    # Папка, куда будут складываться все сгенерированные скрипты
-    jobs_dir = "/home/vlad/saved_jobs"
-    script_name = f"job_{job_id:02d}.sh"
-    
+
+    script_name = f"job_{job_id:03d}.sh"
+
     with open(script_name, "w") as f:
         f.write(sbatch_content)
 
     try:
-        # Отправляем задачу в SLURM
-        result = subprocess.run(["sbatch", script_name], capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            ["sbatch", script_name],
+            capture_output=True, text=True, check=True
+        )
         slurm_job_id = result.stdout.strip().split()[-1]
-        print(f"Заявка {job_id:02d} отправлена. ID: {slurm_job_id} | Лимит: {t_req:2d}с ({timelimit_str}) | Факт: {t_fact:2d}с | Будет TIMEOUT: {t_req < t_fact}")
-        
-        # Переносим сохраненный скрипт в постоянную папку с указанием Slurm ID
-        final_script_name = f"job_{job_id:02d}_slurm_{slurm_job_id}.sh"
-        shutil.move(script_name, os.path.join(jobs_dir, final_script_name))
-        
+        will_timeout = t_req < t_fact 
+        print(
+            f"  Заявка {job_id:03d} | SlurmID: {slurm_job_id:>6} | "
+            f"Лимит: {t_req:>4} с ({timelimit_str}) | "
+            f"Факт: {t_fact:>4} с | "
+            f"Узлов: {nodes} | "
+            f"{'[TIMEOUT]' if will_timeout else ''}"
+        )
+
+        final_name = f"job_{job_id:03d}_slurm_{slurm_job_id}.sh"
+        shutil.move(script_name, os.path.join(JOBS_DIR, final_name))
         return slurm_job_id
+
     except Exception as e:
-        print(f"Ошибка отправки в SLURM: {e}")
+        print(f"  Ошибка отправки заявки {job_id:03d} в SLURM: {e}")
         if os.path.exists(script_name):
-            shutil.move(script_name, os.path.join(jobs_dir, f"job_{job_id:02d}_ERROR.sh"))
+            shutil.move(script_name, os.path.join(JOBS_DIR, f"job_{job_id:03d}_ERROR.sh"))
         return "ERROR"
+
 
 def main():
     if len(sys.argv) < 2:
         print("Использование: python3 simulator.py <количество_заявок>")
+        print("  Количество заявок: целое число от 1 до 999")
         sys.exit(1)
 
     try:
@@ -100,31 +126,43 @@ def main():
         if not (1 <= num_jobs <= 999):
             raise ValueError
     except ValueError:
-        print("Ошибка: Количество заявок должно быть целым числом от 1 до 999.")
+        print("Ошибка: количество заявок должно быть целым числом от 1 до 999.")
         sys.exit(1)
 
-    # Создаем/очищаем папку для скриптов задач перед началом нового эксперимента
-    jobs_dir = "/home/vlad/saved_jobs"
-    if os.path.exists(jobs_dir):
-        shutil.rmtree(jobs_dir)
-    os.makedirs(jobs_dir, exist_ok=True)
+    if os.path.exists(JOBS_DIR):
+        shutil.rmtree(JOBS_DIR)
+    os.makedirs(JOBS_DIR, exist_ok=True)
 
-    log_file = "/home/vlad/simulation_stats.csv"
+    overhead_log = f"{HOME_DIR}/overhead_log.csv"
+    if not os.path.exists(overhead_log):
+        with open(overhead_log, "w") as f:
+            f.write("SlurmJobID,SleepRequested_Sec,ActualElapsed_Ms\n")
 
-    # Открываем файл в режиме "w" (перезапись для чистоты эксперимента)
-    with open(log_file, mode="w", newline="") as f:
+    print(f"=== Имитатор заявок: запуск генерации {num_jobs} заявок ===")
+    print(f"    Параметры модели: T_MIN={T_MIN} с, T_MAX={T_MAX} с, k={K_SCALE}")
+    print()
+
+    with open(LOG_FILE, mode="w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["Timestamp", "SimID", "SlurmJobID", "Nodes", "PlannedTime_Sec", "ActualTime_Sec", "Tau"])
+        writer.writerow([
+            "Timestamp", "SimID", "SlurmJobID", "Nodes",
+            "PlannedTime_Sec", "ActualTime_Sec", "Tau", "IsTimeout"
+        ])
 
-        print(f"--- Запуск генерации {num_jobs} заявок ---")
         for i in range(1, num_jobs + 1):
-            t_fact, t_req, nodes = generate_job()
+            t_fact, t_req, nodes, is_timeout = generate_job()
             tau = round(t_req / t_fact, 4)
-
             slurm_id = submit_to_slurm(i, t_fact, t_req, nodes)
-            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), i, slurm_id, nodes, t_req, t_fact, tau])
+            writer.writerow([
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                i, slurm_id, nodes,
+                t_req, t_fact, tau, int(is_timeout)
+            ])
 
-    print(f"--- Имитация завершена. Скрипты сохранены в {jobs_dir} ---")
+    print()
+    print(f"=== Генерация завершена. Статистика сохранена в {LOG_FILE} ===")
+    print(f"    Сценарии задач сохранены в: {JOBS_DIR}")
+
 
 if __name__ == "__main__":
     main()
